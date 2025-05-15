@@ -8,60 +8,25 @@
 import SwiftUI
 
 struct ReportView: View {
-    let clientName: String
-    let dp, alt, vertical, horizontal, diagonal, ponte: Float
-
+    var medidas: Medidas
+    var imagem: UIImage
     var body: some View {
-        VStack(spacing: 12) {
-            Text("Relatório de Medidas")
-                .font(.title).bold()
-
-            Text("Ótica Manzolli")
-                .font(.subheadline)
-
-            Divider()
-                .padding(.vertical)
-
-            Text("Cliente: \(clientName)")
-                .font(.headline)
-
-            Group {
-                Text("DP: \(String(format: "%.2f", dp)) mm")
-                Text("ALT: \(String(format: "%.2f", alt)) mm")
-                Text("Altura: \(String(format: "%.2f", vertical)) mm")
-                Text("Largura: \(String(format: "%.2f", horizontal)) mm")
-                Text("Diagonal: \(String(format: "%.2f", diagonal)) mm")
-                Text("Ponte: \(String(format: "%.2f", ponte)) mm")
-            }
-            .font(.body)
-
-            Spacer()
-
-            ShareLink(item: reportText()) {
-                Label("Compartilhar Relatório", systemImage: "square.and.arrow.up")
-                    .padding()
-                    .foregroundColor(.white)
-                    .background(Color.blue)
-                    .cornerRadius(8)
-            }
-
-            Spacer()
-        }
-        .padding()
-    }
-
-    private func reportText() -> String {
-        let lines = [
-            "Ótica Manzolli – Relatório de Medidas",
-            "",
-            "Cliente: \(clientName)",
-            String(format: "DP: %.2f mm", dp),
-            String(format: "ALT: %.2f mm", alt),
-            String(format: "Altura: %.2f mm", vertical),
-            String(format: "Largura: %.2f mm", horizontal),
-            String(format: "Diagonal: %.2f mm", diagonal),
-            String(format: "Ponte: %.2f mm", ponte)
-        ]
-        return lines.joined(separator: "\n")
+        ScrollView {
+            Image(uiImage: imagem)
+                .resizable().scaledToFit().frame(height: 220).cornerRadius(12)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("DP: \(String(format: "%.2f", medidas.dp)) mm")
+                Text("DNP Esq.: \(String(format: "%.2f", medidas.dnpLeft)) mm")
+                Text("DNP Dir.: \(String(format: "%.2f", medidas.dnpRight)) mm")
+                Text("ALT Esq.: \(String(format: "%.2f", medidas.altLeft)) mm")
+                Text("ALT Dir.: \(String(format: "%.2f", medidas.altRight)) mm")
+                Text("Horizontal: \(String(format: "%.2f", medidas.horizontal)) mm")
+                Text("Vertical: \(String(format: "%.2f", medidas.vertical)) mm")
+                Text("Diagonal: \(String(format: "%.2f", medidas.diagonal)) mm")
+                Text("Ponte: \(String(format: "%.2f", medidas.ponte)) mm")
+                Text("Alinhamento: \(medidas.alinhada ? "✅" : "❌")")
+                Text("Distância rosto-câmera: \(String(format: "%.0f", medidas.distCM)) cm")
+            }.font(.title3).padding(.top, 12)
+        }.padding()
     }
 }

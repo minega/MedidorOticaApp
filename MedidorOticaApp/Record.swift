@@ -5,11 +5,12 @@
 //  Created by user942665 on 5/12/25.
 //
 
-import UIKit
+import Foundation
 
-struct Record: Identifiable {
-    let id = UUID(), date = Date()
-    let name: String
-    let snapshot: UIImage
-    let data: MeasurementData
+struct Record: Codable, Identifiable {
+    var id = UUID()
+    var nome: String
+    var medidas: Medidas
+    var data: Date
 }
+

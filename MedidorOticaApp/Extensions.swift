@@ -5,15 +5,17 @@
 //  Created by user942665 on 5/12/25.
 //
 
-import UIKit
+import Foundation
+import SwiftUI
 
-extension CGRect { var center: CGPoint { .init(x: midX, y: midY) } }
-
-extension UIApplication {
-    /// Key‑window rápida (para apresentar UIActivityViewController)
-    var firstKeyWindow: UIWindow? {
-        connectedScenes.compactMap { $0 as? UIWindowScene }
-            .flatMap { $0.windows }
-            .first { $0.isKeyWindow }
+extension UIImage {
+    func resized(to width: CGFloat) -> UIImage? {
+        let size = CGSize(width: width, height: width * size.height / size.width)
+        UIGraphicsBeginImageContextWithOptions(size, false, 0.0)
+        draw(in: CGRect(origin: .zero, size: size))
+        let result = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+        return result
     }
 }
+
