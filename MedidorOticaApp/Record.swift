@@ -10,7 +10,7 @@ import Foundation
 struct Record: Codable, Identifiable {
     var id = UUID()
     var nome: String
-    var medidas: Medidas
+    var medidas: MeasurementData
     var data: Date
 }
 

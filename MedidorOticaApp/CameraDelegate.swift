@@ -7,14 +7,14 @@
 
 import SwiftUI
 
-class CameraDelegate: ARCoordinatorDelegate {
+class CameraDelegate {
     @Binding var progresso: Int
     @Binding var mensagem: String?
     @Binding var seta: String?
-    @Binding var historico: [ (Medidas, UIImage) ]
+    @Binding var historico: [ (MeasurementData, UIImage) ]
     var dismiss: () -> Void
 
-    init(progresso: Binding<Int>, mensagem: Binding<String?>, seta: Binding<String?>, historico: Binding<[ (Medidas, UIImage) ]>, dismiss: @escaping () -> Void) {
+    init(progresso: Binding<Int>, mensagem: Binding<String?>, seta: Binding<String?>, historico: Binding<[ (MeasurementData, UIImage) ]>, dismiss: @escaping () -> Void) {
         self._progresso = progresso
         self._mensagem = mensagem
         self._seta = seta
@@ -27,7 +27,7 @@ class CameraDelegate: ARCoordinatorDelegate {
         self.mensagem = mensagem
         self.seta = seta
     }
-    func onFinish(_ medidas: Medidas, _ imagem: UIImage) {
+    func onFinish(_ medidas: MeasurementData, _ imagem: UIImage) {
         self.historico.insert((medidas, imagem), at: 0)
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { self.dismiss() }
     }

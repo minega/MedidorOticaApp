@@ -7,44 +7,35 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var autoCap: Bool = false
-    @State private var useFront: Bool = true
-    @State private var historico: [ (Medidas, UIImage) ] = []
-    @State private var mostrarCamera = false
-    @State private var mensagemErro: String?
-    @State private var progresso: Int = 0
-    @State private var dica: String = ""
-    @State private var seta: String? = nil
-
-    @StateObject private var arCoord = ARCoordinator()
-
+    @StateObject private var arCoordinator = ARCoordinator()       // Shared AR coordinator
+    @StateObject private var store = MeasurementStore()           // Shared data store for history
+    
     var body: some View {
         NavigationView {
-            VStack(spacing: 30) {
-                Text("Medidor de Óculos Óptica")
-                    .font(.largeTitle)
-                    .bold()
-                    .padding()
-                Button("Tirar Medidas") { mostrarCamera = true }
-                    .font(.title3.bold())
-                    .frame(maxWidth: .infinity, minHeight: 55)
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(14)
-                    .padding(.horizontal, 40)
-                Button("Ver Histórico") {}
-                    .font(.body)
-                    .foregroundColor(.gray)
-                    .padding(.horizontal, 40)
+            VStack {
+                Text("Ótica Manzolli")
+                    .font(.largeTitle).bold()
+                    .padding(.top, 20)
                 Spacer()
+                // Main button to start measurement
+                NavigationLink(destination: MedicaoView().environmentObject(arCoordinator).environmentObject(store)) {
+                    Text("Tirar Medidas")
+                        .font(.headline).padding(.horizontal, 40).padding(.vertical, 15)
+                        .background(Color.accentColor)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                }
+                Spacer()
+                // Bottom button to view history of saved measurements
+                NavigationLink(destination: HistoricoView(store: store).environmentObject(store)) {
+                    Text("Ver Histórico")
+                        .font(.subheadline)
+                        .padding(.bottom, 20)
+                }
             }
-            .sheet(isPresented: $mostrarCamera) {
-                MedicaoView(
-                    autoCap: $autoCap,
-                    useFront: $useFront,
-                    historico: $historico
-                )
-            }
+            .navigationBarHidden(true)
         }
+        .navigationViewStyle(StackNavigationViewStyle())
     }
 }
+

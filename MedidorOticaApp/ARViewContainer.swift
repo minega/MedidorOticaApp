@@ -9,18 +9,23 @@ import SwiftUI
 import ARKit
 
 struct ARViewContainer: UIViewRepresentable {
-    @Binding var autoCap: Bool
-    @Binding var useFront: Bool
-    var coordinator: ARCoordinator
-
+    @EnvironmentObject var arCoordinator: ARCoordinator
+    
     func makeUIView(context: Context) -> ARSCNView {
-        let view = ARSCNView(frame: .zero)
-        coordinator.configurarCena(view)
-        return view
+        let sceneView = ARSCNView(frame: .zero)
+        sceneView.autoenablesDefaultLighting = true
+        sceneView.backgroundColor = UIColor.black
+        // Set the coordinator as the delegate for AR session and scene
+        sceneView.session.delegate = arCoordinator
+        sceneView.delegate = arCoordinator
+        // Keep a reference to the ARSCNView in our coordinator
+        arCoordinator.sceneView = sceneView
+        // Start AR session with current camera selection
+        arCoordinator.startSession()
+        return sceneView
     }
+    
     func updateUIView(_ uiView: ARSCNView, context: Context) {
-        coordinator.useFront = useFront
-        coordinator.autoCap = autoCap
-        coordinator.configurarCena(uiView)
+        // Nothing to update continuously from SwiftUI side
     }
 }
