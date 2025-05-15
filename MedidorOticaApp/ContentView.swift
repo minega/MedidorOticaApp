@@ -13,7 +13,7 @@ enum Step { case welcome, camera, review, manual }
 struct ContentView: View {
 
     // MARK: – Navegação
-    @State var step: Step = .welcome       // var (não private) → Preview
+    @State var step: Step = .welcome     // var (não private) p/ Preview
 
     // MARK: – Medidas e mensagens
     @State private var meas = MeasurementData.empty
@@ -33,8 +33,12 @@ struct ContentView: View {
     // MARK: – Ajuste manual
     @State private var dragPts: [CGPoint] = []
 
-    // Combine → recebe Record gerado pelo ARViewContainer
-    private let sub = ARViewContainer.publisher.receive(on: RunLoop.main)
+    // MARK: – Progresso (anel)
+    @State private var progress = 0
+
+    // Combine
+    private let recSub  = ARViewContainer.publisher.receive(on: RunLoop.main)
+    private let progSub = ARViewContainer.progress.receive(on: RunLoop.main)
 
     var body: some View {
         ZStack {
@@ -45,12 +49,18 @@ struct ContentView: View {
             case .manual:  ManualAdjustView
             }
         }
-        .onReceive(sub) { rec in            // recebeu captura
-            meas = rec.data
-            step = .review
-        }
+        .onReceive(recSub)  { rec in meas = rec.data; step = .review }
+        .onReceive(progSub) { p   in progress = p }
     }
 
+
+    // Reinicia a sessão AR quando troca de câmera ou fecha
+    private func restartCamera() {
+        ARViewContainer.pauseSession()
+        step = .welcome           // volta p/ menu ou .camera, depende do fluxo
+    }
+
+    
     // MARK: – 1. Welcome
     private var WelcomeView: some View {
         ZStack {
@@ -59,7 +69,7 @@ struct ContentView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 30) {
-                Spacer()
+                Spacer(minLength: 60)
 
                 Text("Ótica Manzolli")
                     .font(.largeTitle.weight(.bold))
@@ -82,6 +92,7 @@ struct ContentView: View {
                     .padding(.horizontal, 30).padding(.vertical, 10)
                     .background(.ultraThinMaterial)
                     .cornerRadius(10)
+                    .padding(.bottom, 40)                // mantém visível
             }
         }
         .sheet(isPresented: $showHist) {
@@ -92,22 +103,41 @@ struct ContentView: View {
     // MARK: – 2. Câmera
     private var CameraView: some View {
         ZStack {
+            // ▶︎ AR + anel
             ARViewContainer(useFront:  useFront,
                             flashOn:   $flashOn,
                             autoCapOn: $autoCap,
                             data:      $meas,
                             alignMsg:  $alignMsg,
                             eyeMsg:    $eyeMsg)
-                .edgesIgnoringSafeArea(.all)
+            .id(useFront)
+            .edgesIgnoringSafeArea(.all)
+                .onDisappear { ARViewContainer.pauseSession() }
 
+            FaceOvalOverlay()
+            ProgressOvalOverlay(progress: progress)
+
+            // ▶︎ Overlay de botões + mensagens
             VStack {
+                // ┌── Botões no topo ─────────────────────────────┐
                 HStack(spacing: 20) {
-                    // trocar câmera
-                    Button(action: { useFront.toggle() }) {
+                    // X fecha câmera
+                    Button(action: { restartCamera() }) {
+                        Image(systemName: "xmark")
+                    }
+
+                    Spacer()
+
+                    // troca câmera
+                    Button(action: {
+                        useFront.toggle()
+                        restartCamera()
+                        step = .camera          // recria view
+                    }) {
                         Image(systemName: "camera.rotate")
                     }
 
-                    // flash on/off
+                    // flash
                     Button(action: { flashOn.toggle() }) {
                         Image(systemName: flashOn ? "bolt.fill" : "bolt.slash")
                     }
@@ -118,29 +148,45 @@ struct ContentView: View {
                 .background(.thinMaterial)
                 .clipShape(Capsule())
                 .padding(.top, 10)
+                // └───────────────────────────────────────────────┘
+
+                // ┌── Mensagens de alinhamento ───────────────────┐
+                VStack(spacing: 4) {
+                    if !alignMsg.isEmpty {
+                        let ok = progress > 0 && alignMsg.hasPrefix("Dist")
+                        Text(alignMsg)
+                            .foregroundColor(ok ? .green : .red)
+                    }
+                    if !eyeMsg.isEmpty {
+                        Text(eyeMsg)
+                    }
+                }
+                .padding(8)
+                .background(Color.black.opacity(0.65))
+                .cornerRadius(10)
+                .padding(.top, 50)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                // └───────────────────────────────────────────────┘
 
                 Spacer()
 
-                if !alignMsg.isEmpty || !eyeMsg.isEmpty {
-                    VStack(spacing: 4) {
-                        if !alignMsg.isEmpty { Text(alignMsg) }
-                        if !eyeMsg.isEmpty   { Text(eyeMsg)   }
-                    }
-                    .padding(8)
-                    .background(.black.opacity(0.6))
-                    .cornerRadius(10)
-                    .foregroundColor(.white)
-                    .padding(.bottom, 100)
+                // ┌── Botão Capturar ─────────────────────────────┐
+                Button("Capturar") {
+                    autoCap = false          // força captura manual
                 }
+                .buttonStyle(.borderedProminent)
+                .disabled(progress < 8)
+
+                // └───────────────────────────────────────────────┘
             }
         }
     }
+
 
     // MARK: – 3. Relatório
     private var ReviewView: some View {
         ScrollView {
             VStack(spacing: 20) {
-
                 Image(uiImage: ARViewContainer.lastSnapshot)
                     .resizable()
                     .scaledToFit()
@@ -165,20 +211,21 @@ struct ContentView: View {
         }
     }
     private var metricTable: some View {
-        let items: [(String, Float)] = [
-            ("DP",        meas.dp),
-            ("ALT",       meas.alt),
-            ("Vertical",  meas.vertical),
-            ("Horizontal",meas.horizontal),
-            ("Diagonal",  meas.diagonal),
-            ("Ponte",     meas.ponte)
+        let items: [(String, Float, String)] = [
+            ("Distância", meas.distCM , "cm"),
+            ("DP",         meas.dp     , "mm"),
+            ("ALT",        meas.alt    , "mm"),
+            ("Vertical",   meas.vertical, "mm"),
+            ("Horizontal", meas.horizontal, "mm"),
+            ("Diagonal",   meas.diagonal , "mm"),
+            ("Ponte",      meas.ponte    , "mm"),
         ]
         return VStack(alignment: .leading, spacing: 4) {
-            ForEach(items, id: \.0) { label, value in
-                Text("\\(label): \\(value, specifier: \"%.1f\") mm")
+            ForEach(items, id:\.0) { (lbl,val,unit) in
+                Text("\(lbl): \(val,specifier:"%.1f") \(unit)")
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth:.infinity, alignment:.leading)
     }
 
     // MARK: – 4. Ajuste manual
@@ -202,17 +249,17 @@ struct ContentView: View {
                 }
             }
             .onAppear {
-                if dragPts.isEmpty { initDragPoints(size: geo.size) }
+                if dragPts.isEmpty { initDrag(size: geo.size) }
             }
         }
     }
-    private func initDragPoints(size: CGSize) {
+    private func initDrag(size: CGSize) {
         let w = size.width, h = size.height
         dragPts = [
-            CGPoint(x: w*0.25, y: h*0.25),
-            CGPoint(x: w*0.75, y: h*0.25),
-            CGPoint(x: w*0.25, y: h*0.75),
-            CGPoint(x: w*0.75, y: h*0.75)
+            CGPoint(x:w*0.25, y:h*0.25),
+            CGPoint(x:w*0.75, y:h*0.25),
+            CGPoint(x:w*0.25, y:h*0.75),
+            CGPoint(x:w*0.75, y:h*0.75)
         ]
     }
     private func recalcFromDrag() {
@@ -245,8 +292,7 @@ struct ContentView: View {
         let av = UIActivityViewController(activityItems: [rec.snapshot],
                                           applicationActivities: nil)
         UIApplication.shared.firstKeyWindow?
-            .rootViewController?
-            .present(av, animated: true)
+            .rootViewController?.present(av, animated: true)
     }
 }
 
@@ -260,8 +306,7 @@ struct HistorySheet: View {
             List(history) { r in
                 HStack {
                     Image(uiImage: r.snapshot)
-                        .resizable()
-                        .frame(width: 50, height: 50)
+                        .resizable().frame(width:50, height:50)
                         .cornerRadius(6)
                     VStack(alignment: .leading) {
                         Text(r.name).bold()
@@ -282,7 +327,7 @@ struct HistorySheet: View {
 #if DEBUG
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
-        ContentView(step: .welcome)              // força só a tela inicial
+        ContentView(step: .welcome)
             .previewDevice("iPhone 15 Pro")
     }
 }

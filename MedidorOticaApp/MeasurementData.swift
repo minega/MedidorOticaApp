@@ -6,8 +6,18 @@
 //
 import Foundation
 
-/// Pacote com todas as medidas (mm)
-public struct MeasurementData: Sendable {
-    public var dp, alt, vertical, horizontal, diagonal, ponte: Float
-    public static let empty = MeasurementData(dp: 0, alt: 0, vertical: 0, horizontal: 0, diagonal: 0, ponte: 0)
+struct MeasurementData: Identifiable {
+    let id = UUID()
+
+    var dp:        Float = 0
+    var alt:       Float = 0
+    var vertical:  Float = 0
+    var horizontal:Float = 0
+    var diagonal:  Float = 0
+    var ponte:     Float = 0
+    var dnpLeft:   Float = 0       // distância naso-pupilar ESQ
+    var dnpRight:  Float = 0       // distância naso-pupilar DIR
+    var distCM:    Float = 0
+    static let empty = MeasurementData()
 }
+
